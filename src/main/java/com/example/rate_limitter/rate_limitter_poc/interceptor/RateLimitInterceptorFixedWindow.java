@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 @Component
-public class RateLimitInterceptor implements HandlerInterceptor {
+public class RateLimitInterceptorFixedWindow implements HandlerInterceptor {
     private final int LIMIT = 5;
     private final long WINDOW_DURATION_MS = 60000;
 
