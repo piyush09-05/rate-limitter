@@ -17,28 +17,32 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private final ConcurrentHashMap<String, WindowData> store = new ConcurrentHashMap<>();
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception{
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String clientIp = request.getRemoteAddr();
         long now = System.currentTimeMillis();
 
-        if(!store.containsKey(clientIp)){
+        if (!store.containsKey(clientIp)) {
             store.put(clientIp, new WindowData(now));
             return true;
         }
-        boolean isWindowExpired = now - store.get(clientIp).getWindowStartTime() > WINDOW_DURATION_MS;
 
-        if(isWindowExpired){
-            store.get(clientIp).reset(now);
+        WindowData windowData = store.get(clientIp);
+        synchronized (windowData) {
+            boolean isWindowExpired = now - store.get(clientIp).getWindowStartTime() > WINDOW_DURATION_MS;
+
+            if (isWindowExpired) {
+                windowData.reset(now);
+                return true;
+            }
+
+            if (store.get(clientIp).getCount() > LIMIT) {
+                response.setStatus(429);
+                response.getWriter().write("Too Many Requests");
+                return false;
+            }
+            windowData.incrementCount();
             return true;
         }
-
-        if(store.get(clientIp).getCount() > LIMIT){
-            response.setStatus(429);
-            response.getWriter().write("Too Many Requests");
-            return false;
-        }
-        store.get(clientIp).incrementCount();
-        return true;
     }
 
 
